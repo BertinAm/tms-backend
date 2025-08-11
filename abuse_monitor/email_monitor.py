@@ -14,7 +14,7 @@ from itertools import chain
 from django.utils import timezone
 from .models import Ticket, Notification
 from .grok_api import GrokAPI
-from .whatsapp_service import WhatsAppService
+# from .whatsapp_service import WhatsAppService
 from .notification_service import NotificationService
 
 # Load environment variables
@@ -35,7 +35,7 @@ class EmailMonitor:
         self.imap_server = "imap.gmail.com"
         self.imap_port = 993
         self.grok_api = GrokAPI()
-        self.whatsapp_service = WhatsAppService()
+        # self.whatsapp_service = WhatsAppService()  # Disabled WhatsApp service
         
         # UID tracking for efficient email processing
         self.uid_max = 0
@@ -370,30 +370,27 @@ class EmailMonitor:
     def send_whatsapp_notification(self, ticket: Ticket, analysis: Dict[str, Any]) -> bool:
         """
         Send WhatsApp notification to CEO about the new ticket
+        DISABLED: WhatsApp service temporarily disabled due to pywhatkit issues on Render
         """
         try:
             # Create notification message
             message = self._create_notification_message(ticket, analysis)
         
-            import time
-            time.sleep(2)  # 2-second delay as requested
-            success = self.whatsapp_service.send_whatsapp_message_instant(message)
+            # WhatsApp service disabled - logging only
+            logger.info(f"WhatsApp notification would be sent for ticket {ticket.ticket_id}")
+            logger.info(f"Message content: {message[:100]}...")
             
-            if success:
-                # Save notification record
-                Notification.objects.create(
-                    ticket=ticket,
-                    sent_to=config('CEO_PHONE_NUMBER', default=''),
-                    status='sent'
-                )
-                logger.info(f"WhatsApp notification sent for ticket {ticket.ticket_id}")
-                return True
-            else:
-                logger.error(f"Failed to send WhatsApp notification for ticket {ticket.ticket_id}")
-                return False
+            # Save notification record (for tracking purposes)
+            Notification.objects.create(
+                ticket=ticket,
+                sent_to=config('CEO_PHONE_NUMBER', default=''),
+                status='disabled'
+            )
+            
+            return True
                 
         except Exception as e:
-            logger.error(f"Error sending WhatsApp notification: {e}")
+            logger.error(f"Error in WhatsApp notification (disabled): {e}")
             return False
     
     def _create_notification_message(self, ticket: Ticket, analysis: Dict[str, Any]) -> str:

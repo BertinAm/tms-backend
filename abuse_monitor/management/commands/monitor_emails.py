@@ -92,14 +92,13 @@ class Command(BaseCommand):
                 )
             
             # Test WhatsApp connection
-            if monitor.whatsapp_service.test_connection():
-                self.stdout.write(
-                    self.style.SUCCESS('✓ WhatsApp connection successful')
-                )
-            else:
-                self.stdout.write(
-                    self.style.WARNING('⚠ WhatsApp connection failed - notifications may not work')
-                )
+            # if monitor.whatsapp_service.test_connection():  # Disabled WhatsApp service
+            #     self.style.SUCCESS('✓ WhatsApp connection successful')
+            # else:
+            #     self.style.WARNING('⚠ WhatsApp connection failed - notifications may not work')
+            
+            # WhatsApp service disabled
+            self.style.WARNING('⚠ WhatsApp service disabled - notifications will be logged only')
             
             # Test Grok API
             test_analysis = monitor.grok_api.analyze_ticket({

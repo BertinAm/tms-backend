@@ -44,7 +44,7 @@ Jinja2==3.1.6
 jiter==0.10.0
 kombu==5.5.4
 MarkupSafe==3.0.2
-MouseInfo==0.1.3
+# MouseInfo==0.1.3  # Disabled - related to pywhatkit
 msgpack==1.1.1
 multidict==6.6.3
 openai==1.98.0
@@ -53,23 +53,23 @@ pillow==11.3.0
 prompt_toolkit==3.0.51
 propcache==0.3.2
 psycopg2-binary==2.9.10
-PyAutoGUI==0.9.54
+# PyAutoGUI==0.9.54  # Disabled - related to pywhatkit
 pycparser==2.22
 pydantic==2.11.7
 pydantic_core==2.33.2
-PyGetWindow==0.0.9
+# PyGetWindow==0.0.9  # Disabled - related to pywhatkit
 PyJWT==2.10.1
-PyMsgBox==1.0.9
-pyperclip==1.9.0
-PyRect==0.2.0
-PyScreeze==1.0.1
+# PyMsgBox==1.0.9  # Disabled - related to pywhatkit
+# pyperclip==1.9.0  # Disabled - related to pywhatkit
+# PyRect==0.2.0  # Disabled - related to pywhatkit
+# PyScreeze==1.0.1  # Disabled - related to pywhatkit
 python-dateutil==2.9.0.post0
 python-decouple==3.8
 python-dotenv==1.1.1
 python-whois==0.8.0
-pytweening==1.2.0
+# pytweening==1.2.0  # Disabled - related to pywhatkit
 pytz==2025.2
-pywhatkit==5.4
+# pywhatkit==5.4  # Disabled due to issues on Render server
 redis==4.5.4
 requests==2.31.0
 schedule==1.2.2

@@ -5,7 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from decouple import config
 from .models import Ticket, Notification
-from .utils import parse_email, send_whatsapp_notification
+# from .utils import parse_email, send_whatsapp_notification  # Disabled WhatsApp service
 from .grok_api import GrokAPI
 from .chat_manager import TMSChatManager
 from .email_monitor import EmailMonitor
@@ -472,8 +472,8 @@ class EmailWebhookView(APIView):
             )
             
             # Send WhatsApp notification
-            notification_message = f"New abuse complaint received: {subject}"
-            send_whatsapp_notification(notification_message)
+            # notification_message = f"New abuse complaint received: {subject}"
+            # send_whatsapp_notification(notification_message) # Disabled WhatsApp service
             
             return Response({
                 'success': True,
