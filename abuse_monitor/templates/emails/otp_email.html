@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTP Verification - TMS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f8fafc;
+        }
+        
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .email-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 30px;
+            text-align: center;
+            color: white;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        
+        .email-body {
+            padding: 40px 30px;
+        }
+        
+        .greeting {
+            font-size: 24px;
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .message {
+            font-size: 16px;
+            color: #4a5568;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+        
+        .otp-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 30px 0;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .otp-label {
+            color: white;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        
+        .otp-code {
+            font-size: 36px;
+            font-weight: bold;
+            color: #ffffff;
+            letter-spacing: 8px;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .otp-validity {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            margin-top: 15px;
+        }
+        
+        .warning {
+            background-color: #fff5f5;
+            border: 1px solid #fed7d7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        
+        .warning-title {
+            color: #e53e3e;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+        
+        .warning-text {
+            color: #742a2a;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .footer {
+            background-color: #f7fafc;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .footer-text {
+            color: #718096;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        
+        .company-info {
+            color: #a0aec0;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        
+        .divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+            margin: 25px 0;
+        }
+        
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                margin: 0 15px;
+            }
+            
+            .email-header,
+            .email-body,
+            .footer {
+                padding: 25px 20px;
+            }
+            
+            .otp-code {
+                font-size: 28px;
+                letter-spacing: 4px;
+            }
+            
+            .greeting {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="email-header">
+            <div class="logo">{{ company_name }}</div>
+            <div class="subtitle">Secure Ticket Management System</div>
+        </div>
+        
+        <!-- Body -->
+        <div class="email-body">
+            <div class="greeting">Hello {{ name }}!</div>
+            
+            {% if type == 'registration' %}
+            <div class="message">
+                Welcome to TMS! To complete your account registration and verify your email address, please use the One-Time Password (OTP) below:
+            </div>
+            {% elif type == 'password_reset' %}
+            <div class="message">
+                We received a request to reset your password for your TMS account. Please use the One-Time Password (OTP) below to proceed with resetting your password:
+            </div>
+            {% else %}
+            <div class="message">
+                Please use the One-Time Password (OTP) below to verify your identity:
+            </div>
+            {% endif %}
+            
+            <!-- OTP Container -->
+            <div class="otp-container">
+                <div class="otp-label">Your Verification Code</div>
+                <div class="otp-code">{{ otp }}</div>
+                <div class="otp-validity">Valid for 10 minutes</div>
+            </div>
+            
+            <!-- Security Warning -->
+            <div class="warning">
+                <div class="warning-title">🔒 Security Notice</div>
+                <div class="warning-text">
+                    • Never share this OTP with anyone<br>
+                    • TMS staff will never ask for your OTP<br>
+                    • This code expires in 10 minutes<br>
+                    • If you didn't request this, please ignore this email
+                </div>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="message">
+                {% if type == 'registration' %}
+                Once verified, you'll have full access to your TMS dashboard where you can monitor tickets, view analytics, and chat with our AI assistant.
+                {% elif type == 'password_reset' %}
+                After entering this OTP, you'll be able to set a new password for your account.
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-text">
+                Thank you for using {{ company_name }}
+            </div>
+            <div class="company-info">
+                This is an automated message from TMS - Ticket Management System.<br>
+                For support, please contact your system administrator.<br>
+                © 2024 TMS. All rights reserved.
+            </div>
+        </div>
+    </div>
+</body>
+</html>
