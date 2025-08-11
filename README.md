@@ -85,7 +85,7 @@ GMAIL_USER=your-email@gmail.com
 GMAIL_PASSWORD=your-app-password
 
 # WhatsApp
-WHATSAPP_PHONE=+237671836872
+WHATSAPP_PHONE=+xxx xxxxxxxxx
 
 # AI Integration
 GROK_API_KEY=your-grok-api-key
