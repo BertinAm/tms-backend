@@ -153,5 +153,5 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = config('GMAIL_USER', default='tangentohost@gmail.com')
 EMAIL_HOST_PASSWORD = config('GMAIL_PASSWORD', default='dueaazzgfeigarug')
 
-CELERY_BROKER_URL = config('CELERY_BROKER_URL')
-CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND') 
+CELERY_BROKER_URL = config('REDIS_URL')
+CELERY_RESULT_BACKEND = config('REDIS_URL') 
