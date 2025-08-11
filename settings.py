@@ -3,6 +3,7 @@ from pathlib import Path
 from decouple import config
 from dotenv import load_dotenv
 from datetime import timedelta
+import dj_database_url
 
 # Load environment variables from .env file
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
@@ -83,13 +84,15 @@ CHANNEL_LAYERS = {
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'staticfiles')
 
-# Use SQLite for local development
+# Database configuration
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': 'db.sqlite3',
-    }
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL'),
+        conn_max_age=600,
+        ssl_require=True,
+    )
 }
+
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
