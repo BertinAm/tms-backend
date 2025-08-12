@@ -4,21 +4,14 @@ from django.utils import timezone
 import uuid
 
 class Ticket(models.Model):
-    ticket_id = models.CharField(max_length=50, unique=True)
-    subject = models.TextField()
-    sender = models.EmailField()
-    received_at = models.DateTimeField()
-    status = models.CharField(max_length=20, choices=[
-        ('open', 'Open'),
-        ('closed', 'Closed'),
-        ('pending', 'Pending'),
-    ], default='open')
-    priority = models.CharField(max_length=20, choices=[
-        ('high', 'High'),
-        ('medium', 'Medium'),
-        ('low', 'Low'),
-    ], default='medium')
-    content = models.TextField()
+    ticket_id = models.CharField(max_length=20, unique=True)
+    subject = models.CharField(max_length=255)
+    body = models.TextField()
+    sender = models.CharField(max_length=255, default='abuse@contabo.com')
+    recipient = models.CharField(max_length=255, default='tangentohost@gmail.com')
+    received_at = models.DateTimeField(auto_now_add=True)
+    priority = models.CharField(max_length=20, default='medium')
+    status = models.CharField(max_length=20, default='open')
     ai_analysis = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -30,11 +23,7 @@ class Notification(models.Model):
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE)
     sent_to = models.CharField(max_length=50)
     sent_at = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, choices=[
-        ('sent', 'Sent'),
-        ('failed', 'Failed'),
-        ('disabled', 'Disabled'),
-    ], default='sent')
+    status = models.CharField(max_length=20, default='sent')
     message = models.TextField(blank=True)
 
     def __str__(self):
