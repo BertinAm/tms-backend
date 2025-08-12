@@ -90,6 +90,7 @@ class UserLoginView(GenericAPIView):
         
         user = serializer.validated_data['user']
         refresh = RefreshToken.for_user(user)
+        profile, created = UserProfile.objects.get_or_create(user=user)
         
         return Response({
             'access_token': str(refresh.access_token),
@@ -99,7 +100,8 @@ class UserLoginView(GenericAPIView):
                 'username': user.username,
                 'email': user.email,
                 'first_name': user.first_name,
-                'last_name': user.last_name
+                'last_name': user.last_name,
+                'profile_picture': profile.get_profile_picture_url()
             }
         }, status=status.HTTP_200_OK)
 
