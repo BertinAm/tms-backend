@@ -13,6 +13,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+import os
 
 from .security import create_token, decrypt_token
 from .auth_serializers import (
@@ -24,6 +27,7 @@ from .auth_serializers import (
     UserProfileSerializer,
     ChangePasswordSerializer
 )
+from .models import UserProfile
 
 
 class UserRegistrationView(GenericAPIView):
@@ -77,27 +81,40 @@ class UserRegistrationView(GenericAPIView):
         )
 
 
-class UserLoginView(GenericAPIView):
-    serializer_class = UserLoginSerializer
-    
-    def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
+@method_decorator(csrf_exempt, name='dispatch')
+class UserLoginView(APIView):
+    def post(self, request):
+        serializer = UserLoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = authenticate(
+                username=serializer.validated_data['username'],
+                password=serializer.validated_data['password']
+            )
+            
+            if user:
+                if user.is_active:
+                    refresh = RefreshToken.for_user(user)
+                    profile, created = UserProfile.objects.get_or_create(user=user)
+                    
+                    return Response({
+                        'message': 'Login successful',
+                        'access_token': str(refresh.access_token),
+                        'refresh_token': str(refresh),
+                        'user': {
+                            'id': user.id,
+                            'username': user.username,
+                            'email': user.email,
+                            'first_name': user.first_name,
+                            'last_name': user.last_name,
+                            'profile_picture': profile.get_profile_picture_url()
+                        }
+                    })
+                else:
+                    return Response({'error': 'Account is disabled'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
         
-        user = serializer.validated_data['user']
-        refresh = RefreshToken.for_user(user)
-        
-        return Response({
-            'access_token': str(refresh.access_token),
-            'refresh_token': str(refresh),
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name
-            }
-        }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ForgotPasswordView(GenericAPIView):
@@ -250,14 +267,61 @@ class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        serializer = UserProfileSerializer(request.user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            user = request.user
+            profile, created = UserProfile.objects.get_or_create(user=user)
+            
+            return Response({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'date_joined': user.date_joined.isoformat(),
+                'last_login': user.last_login.isoformat() if user.last_login else None,
+                'profile_picture': profile.get_profile_picture_url(),
+                'bio': profile.bio,
+                'phone_number': profile.phone_number
+            })
+        except Exception as e:
+            logger.error(f"Profile retrieval error: {e}")
+            return Response({'error': 'Failed to retrieve profile'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     def put(self, request):
-        serializer = UserProfileSerializer(request.user, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            user = request.user
+            profile, created = UserProfile.objects.get_or_create(user=user)
+            
+            # Update user fields
+            if 'first_name' in request.data:
+                user.first_name = request.data['first_name']
+            if 'last_name' in request.data:
+                user.last_name = request.data['last_name']
+            user.save()
+            
+            # Update profile fields
+            if 'bio' in request.data:
+                profile.bio = request.data['bio']
+            if 'phone_number' in request.data:
+                profile.phone_number = request.data['phone_number']
+            profile.save()
+            
+            return Response({
+                'message': 'Profile updated successfully',
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'profile_picture': profile.get_profile_picture_url(),
+                    'bio': profile.bio,
+                    'phone_number': profile.phone_number
+                }
+            })
+        except Exception as e:
+            logger.error(f"Profile update error: {e}")
+            return Response({'error': 'Failed to update profile'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class LogoutView(APIView):
@@ -321,3 +385,49 @@ class DeleteAccountView(APIView):
         return Response({
             'message': 'Account deleted successfully.'
         }, status=status.HTTP_200_OK)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class UploadProfilePictureView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            user = request.user
+            profile, created = UserProfile.objects.get_or_create(user=user)
+            
+            # Check if file was uploaded
+            if 'profile_picture' not in request.FILES:
+                return Response({'error': 'No profile picture file provided'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            file = request.FILES['profile_picture']
+            
+            # Validate file type
+            allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif']
+            if file.content_type not in allowed_types:
+                return Response({'error': 'Invalid file type. Only JPEG, PNG, and GIF are allowed'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Validate file size (max 5MB)
+            if file.size > 5 * 1024 * 1024:
+                return Response({'error': 'File size too large. Maximum size is 5MB'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Delete old profile picture if it exists
+            if profile.profile_picture:
+                try:
+                    if os.path.exists(profile.profile_picture.path):
+                        os.remove(profile.profile_picture.path)
+                except Exception as e:
+                    logger.warning(f"Failed to delete old profile picture: {e}")
+            
+            # Save new profile picture
+            profile.profile_picture = file
+            profile.save()
+            
+            return Response({
+                'message': 'Profile picture uploaded successfully',
+                'profile_picture_url': profile.get_profile_picture_url()
+            })
+            
+        except Exception as e:
+            logger.error(f"Profile picture upload error: {e}")
+            return Response({'error': 'Failed to upload profile picture'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

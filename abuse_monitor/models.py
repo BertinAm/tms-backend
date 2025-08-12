@@ -3,6 +3,22 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 import uuid
 
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
+    bio = models.TextField(max_length=500, blank=True)
+    phone_number = models.CharField(max_length=20, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s profile"
+
+    def get_profile_picture_url(self):
+        if self.profile_picture:
+            return self.profile_picture.url
+        return None
+
 class Ticket(models.Model):
     ticket_id = models.CharField(max_length=20, unique=True)
     subject = models.CharField(max_length=255)

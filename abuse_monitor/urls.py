@@ -11,6 +11,7 @@ urlpatterns = [
     path('auth/reset-password', auth_views.ResetPasswordView.as_view(), name='reset-password'),
     path('auth/profile', auth_views.UserProfileView.as_view(), name='user-profile'),
     path('auth/change-password', auth_views.ChangePasswordView.as_view(), name='change-password'),
+    path('auth/upload-profile-picture', auth_views.UploadProfilePictureView.as_view(), name='upload-profile-picture'),
     path('auth/delete-account', auth_views.DeleteAccountView.as_view(), name='delete-account'),
     
     # Health check endpoint
