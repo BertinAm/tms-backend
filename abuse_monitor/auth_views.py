@@ -81,40 +81,27 @@ class UserRegistrationView(GenericAPIView):
         )
 
 
-@method_decorator(csrf_exempt, name='dispatch')
-class UserLoginView(APIView):
-    def post(self, request):
-        serializer = UserLoginSerializer(data=request.data)
-        if serializer.is_valid():
-            user = authenticate(
-                username=serializer.validated_data['username'],
-                password=serializer.validated_data['password']
-            )
-            
-            if user:
-                if user.is_active:
-                    refresh = RefreshToken.for_user(user)
-                    profile, created = UserProfile.objects.get_or_create(user=user)
-                    
-                    return Response({
-                        'message': 'Login successful',
-                        'access_token': str(refresh.access_token),
-                        'refresh_token': str(refresh),
-                        'user': {
-                            'id': user.id,
-                            'username': user.username,
-                            'email': user.email,
-                            'first_name': user.first_name,
-                            'last_name': user.last_name,
-                            'profile_picture': profile.get_profile_picture_url()
-                        }
-                    })
-                else:
-                    return Response({'error': 'Account is disabled'}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
+class UserLoginView(GenericAPIView):
+    serializer_class = UserLoginSerializer
+    
+    def post(self, request, *args, **kwargs):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
         
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        user = serializer.validated_data['user']
+        refresh = RefreshToken.for_user(user)
+        
+        return Response({
+            'access_token': str(refresh.access_token),
+            'refresh_token': str(refresh),
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name
+            }
+        }, status=status.HTTP_200_OK)
 
 
 class ForgotPasswordView(GenericAPIView):
