@@ -4,8 +4,8 @@ from rest_framework import status
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from decouple import config
-from .models import Ticket, Notification
-# from .utils import parse_email, send_whatsapp_notification  # Disabled WhatsApp service
+from .models import Ticket, Notification, ActivityLog
+from .utils import parse_email, send_whatsapp_notification, log_activity
 from .grok_api import GrokAPI
 from .chat_manager import TMSChatManager
 from .email_monitor import EmailMonitor
@@ -16,6 +16,8 @@ from django.db import models
 from datetime import datetime
 from django.utils import timezone
 from datetime import timedelta
+from django.core.paginator import Paginator
+from rest_framework.permissions import IsAuthenticated
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +68,171 @@ class TicketListView(APIView):
             'priority': t.priority,
             'received_at': t.received_at.isoformat() if t.received_at else None
         } for t in tickets]
+        
+        # Log the activity
+        log_activity(
+            activity_type='ticket_view',
+            description=f'Viewed {len(response_data)} tickets',
+            user=request.user if hasattr(request, 'user') else None,
+            request=request
+        )
+        
         print(f"Returning {len(response_data)} tickets")
         return Response(response_data)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ActivityLogView(APIView):
+    """
+    API endpoint for retrieving activity logs
+    """
+    def get(self, request):
+        try:
+            # Get query parameters
+            page = int(request.GET.get('page', 1))
+            page_size = int(request.GET.get('page_size', 50))
+            activity_type = request.GET.get('activity_type')
+            severity = request.GET.get('severity')
+            user_id = request.GET.get('user_id')
+            ticket_id = request.GET.get('ticket_id')
+            start_date = request.GET.get('start_date')
+            end_date = request.GET.get('end_date')
+            
+            # Build queryset
+            queryset = ActivityLog.objects.all()
+            
+            # Apply filters
+            if activity_type:
+                queryset = queryset.filter(activity_type=activity_type)
+            if severity:
+                queryset = queryset.filter(severity=severity)
+            if user_id:
+                queryset = queryset.filter(user_id=user_id)
+            if ticket_id:
+                queryset = queryset.filter(related_ticket__ticket_id=ticket_id)
+            if start_date:
+                queryset = queryset.filter(created_at__gte=start_date)
+            if end_date:
+                queryset = queryset.filter(created_at__lte=end_date)
+            
+            # Paginate results
+            paginator = Paginator(queryset, page_size)
+            page_obj = paginator.get_page(page)
+            
+            # Serialize data
+            activities = []
+            for activity in page_obj:
+                activities.append({
+                    'id': str(activity.id),
+                    'user': {
+                        'id': activity.user.id,
+                        'username': activity.user.username,
+                        'email': activity.user.email
+                    } if activity.user else None,
+                    'activity_type': activity.activity_type,
+                    'activity_type_display': activity.get_activity_type_display(),
+                    'severity': activity.severity,
+                    'severity_display': activity.get_severity_display(),
+                    'description': activity.description,
+                    'details': activity.details,
+                    'ip_address': activity.ip_address,
+                    'user_agent': activity.user_agent,
+                    'related_ticket': {
+                        'ticket_id': activity.related_ticket.ticket_id,
+                        'subject': activity.related_ticket.subject
+                    } if activity.related_ticket else None,
+                    'created_at': activity.created_at.isoformat(),
+                })
+            
+            # Log this activity
+            log_activity(
+                activity_type='ticket_view',
+                description=f'Viewed activity logs (page {page}, {len(activities)} items)',
+                user=request.user if hasattr(request, 'user') else None,
+                request=request
+            )
+            
+            return Response({
+                'activities': activities,
+                'pagination': {
+                    'page': page,
+                    'page_size': page_size,
+                    'total_pages': paginator.num_pages,
+                    'total_count': paginator.count,
+                    'has_next': page_obj.has_next(),
+                    'has_previous': page_obj.has_previous(),
+                }
+            })
+            
+        except Exception as e:
+            logger.error(f"Error retrieving activity logs: {e}")
+            return Response({
+                'error': 'Failed to retrieve activity logs',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class ActivityLogStatsView(APIView):
+    """
+    API endpoint for activity log statistics
+    """
+    def get(self, request):
+        try:
+            # Get date range
+            days = int(request.GET.get('days', 7))
+            end_date = timezone.now()
+            start_date = end_date - timedelta(days=days)
+            
+            # Get activities in date range
+            activities = ActivityLog.objects.filter(created_at__range=[start_date, end_date])
+            
+            # Calculate statistics
+            stats = {
+                'total_activities': activities.count(),
+                'by_type': {},
+                'by_severity': {},
+                'by_user': {},
+                'recent_activities': []
+            }
+            
+            # Group by activity type
+            for activity in activities:
+                activity_type = activity.get_activity_type_display()
+                if activity_type not in stats['by_type']:
+                    stats['by_type'][activity_type] = 0
+                stats['by_type'][activity_type] += 1
+                
+                # Group by severity
+                severity = activity.get_severity_display()
+                if severity not in stats['by_severity']:
+                    stats['by_severity'][severity] = 0
+                stats['by_severity'][severity] += 1
+                
+                # Group by user
+                user_name = activity.user.username if activity.user else 'System'
+                if user_name not in stats['by_user']:
+                    stats['by_user'][user_name] = 0
+                stats['by_user'][user_name] += 1
+            
+            # Get recent activities
+            recent_activities = activities.order_by('-created_at')[:10]
+            for activity in recent_activities:
+                stats['recent_activities'].append({
+                    'id': str(activity.id),
+                    'activity_type': activity.get_activity_type_display(),
+                    'severity': activity.get_severity_display(),
+                    'description': activity.description,
+                    'user': activity.user.username if activity.user else 'System',
+                    'created_at': activity.created_at.isoformat(),
+                })
+            
+            return Response(stats)
+            
+        except Exception as e:
+            logger.error(f"Error retrieving activity log stats: {e}")
+            return Response({
+                'error': 'Failed to retrieve activity log statistics',
+                'details': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class ChatView(APIView):
